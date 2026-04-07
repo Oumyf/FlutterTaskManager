@@ -29,8 +29,8 @@ class TaskListPage extends StatefulWidget {
   State<TaskListPage> createState() => _TaskListPageState();
 }
 
-class _TaskListPageState extends State<TaskListPage>
-    with SingleTickerProviderStateMixin {
+class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderStateMixin {
+  bool _showForm = true;
 
   // Services
   final IsarService isarService = IsarService();
@@ -254,7 +254,50 @@ class _TaskListPageState extends State<TaskListPage>
       appBar: _buildAppBar(),
       body: Column(
         children: [
-          _buildForm(),
+          if (_showForm)
+            Stack(
+              children: [
+                _buildForm(),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _showForm = false),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(6),
+                      child: const Icon(Icons.close, size: 20, color: Colors.black54),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (!_showForm)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: ElevatedButton.icon(
+                onPressed: () => setState(() => _showForm = true),
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Ajouter une tâche'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  elevation: 2,
+                ),
+              ),
+            ),
           _buildList(),
         ],
       ),
