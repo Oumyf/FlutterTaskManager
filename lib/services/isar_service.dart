@@ -24,6 +24,13 @@ class IsarService {
     });
   }
 
+  Future<void> updateTask(Task task) async {
+      final isar = await db;
+      await isar.writeTxn(() async {
+    await isar.tasks.put(task);
+  });
+}
+
   Future<List<Task>> getAllTasks() async {
     final isar = await db;
     return await isar.tasks.where().findAll();

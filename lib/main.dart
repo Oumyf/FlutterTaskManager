@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:task_media_app/pages/task_list_page.dart';
+import 'package:task_media_app/services/notification_serve.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Handler background — doit être TOP-LEVEL (pas dans une classe)
@@ -40,11 +41,9 @@ void main() async {
   // Background handler — doit être enregistré juste après initializeApp
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Initialiser le plugin de notifications locales
-  await _initLocalNotifications();
-
-  // Demander la permission (Android 13+ et iOS)
-  await _requestPermissions();
+  // Initialiser NotificationService (local + FCM)
+  await NotificationService.instance.init();
+  await NotificationService.instance.requestPermission();
 
   // Afficher le token FCM pour les tests
   final token = await FirebaseMessaging.instance.getToken();
@@ -147,26 +146,10 @@ class _AppInitState extends State<_AppInit> {
       final notification = message.notification;
       if (notification == null) return;
 
-      // Afficher via flutter_local_notifications (FCM seul ne suffit pas en foreground Android)
-      _localNotifications.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _androidChannel.id,
-            _androidChannel.name,
-            channelDescription: _androidChannel.description,
-            importance: Importance.max,
-            priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
-          ),
-          iOS: const DarwinNotificationDetails(
-            presentAlert: true,
-            presentBadge: true,
-            presentSound: true,
-          ),
-        ),
+      // Affiche la notif via NotificationService (centralisé)
+      NotificationService.instance.showFCMNotification(
+        notification.title ?? '',
+        notification.body ?? '',
       );
     });
   }
@@ -185,36 +168,4 @@ class _AppInitState extends State<_AppInit> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Service de navigation globale (pour dialogues depuis callbacks)
-// ─────────────────────────────────────────────────────────────────────────────
-class NotificationService {
-  static final navigatorKey = GlobalKey<NavigatorState>();
-
-  static void showNotificationDialog(String title, String body) {
-    final context = navigatorKey.currentContext;
-    if (context == null) return;
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.notifications, color: Color(0xFF6366F1)),
-            const SizedBox(width: 8),
-            Expanded(child: Text(title)),
-          ],
-        ),
-        content: Text(body),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                navigatorKey.currentState?.pop(),
-            child: const Text('Fermer'),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// (La classe NotificationService pour la navigation/dialog a été supprimée. Utilise le singleton de notification_serve.dart)

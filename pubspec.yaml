@@ -43,6 +43,8 @@ dependencies:
   isar_generator: ^3.1.0+1
   flutter_whisper_kit: ^0.3.0
   flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.4
+
 
 dev_dependencies:
   flutter_test:

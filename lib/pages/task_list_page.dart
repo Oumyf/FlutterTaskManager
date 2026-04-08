@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 import '../models/task.dart';
 import '../services/isar_service.dart';
+import '../services/notification_serve.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Couleurs globales
@@ -100,8 +101,16 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       ..videoPath   = videoPath
       ..audioPath   = audioPath;
     await isarService.addTask(task);
+    // Notification locale à la création
+    await NotificationService.instance.notifyTaskCreated(
+      task.title,
+      deadline: task.deadline,
+    );
     _resetForm();
     loadTasks();
+
+  // Exemple d'appel à placer lors de la modification d'une tâche :
+  // await NotificationService.instance.notifyTaskUpdated(task.title, task.status);
   }
 
   Future<void> deleteTask(int id) async {
