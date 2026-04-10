@@ -33,10 +33,14 @@ class TaskListPage extends StatefulWidget {
 }
 
 class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderStateMixin {
-  bool _showForm = true;
+  int _currentPage = 0; // 0: liste, 1: ajout/modification, 2: board
+  String _statusFilter = 'all';
   Task? _editingTask;
   int? _transcribingTaskId;
   static const String _transcriptMarker = '\n\n[TRANSCRIPTION_AUDIO]\n';
+  final TextEditingController _searchController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  AutovalidateMode _autoValidateMode = AutovalidateMode.disabled;
 
   // Services
   final IsarService isarService = IsarService();
@@ -80,6 +84,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
   void dispose() {
     _pulseController.dispose();
     _recorder.dispose();
+    _searchController.dispose();
     titleController.dispose();
     descriptionController.dispose();
     deadlineController.dispose();
@@ -117,6 +122,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     );
     _showSnack('Tâche créée');
     _resetForm();
+    setState(() => _currentPage = 0);
     await loadTasks();
   }
 
@@ -145,11 +151,22 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     await NotificationService.instance.notifyTaskUpdated(current.title, current.status);
     _showSnack('Tâche modifiée');
     _resetForm();
-    setState(() => _editingTask = null);
+    setState(() {
+      _editingTask = null;
+      _currentPage = 0;
+    });
     await loadTasks();
   }
 
   Future<void> _submitTask() async {
+    FocusScope.of(context).unfocus();
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) {
+      setState(() => _autoValidateMode = AutovalidateMode.onUserInteraction);
+      _showSnack('Veuillez corriger les champs du formulaire', isError: true);
+      return;
+    }
+
     if (_editingTask == null) {
       await addTask();
       return;
@@ -170,7 +187,8 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       videoPath = task.videoPath;
       audioPath = task.audioPath;
       _hasAudioDraft = task.audioPath != null && task.audioPath!.isNotEmpty;
-      _showForm = true;
+      _currentPage = 1;
+      _autoValidateMode = AutovalidateMode.disabled;
     });
   }
 
@@ -343,6 +361,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     titleController.clear();
     descriptionController.clear();
     deadlineController.clear();
+    _formKey.currentState?.reset();
     setState(() {
       status         = 'pending';
       priority       = null;
@@ -353,6 +372,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       _hasAudioDraft = false;
       _isRecording   = false;
       _recordDuration = Duration.zero;
+      _autoValidateMode = AutovalidateMode.disabled;
     });
   }
 
@@ -472,6 +492,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
 
   Color _statusColor(String s) {
     switch (s) {
+      case 'in_progress': return _blue;
       case 'completed': return _green;
       case 'archived':  return Colors.grey;
       default:          return _primary;
@@ -480,10 +501,61 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
 
   String _statusLabel(String s) {
     switch (s) {
+      case 'in_progress': return 'En cours';
       case 'completed': return 'Terminée';
       case 'archived':  return 'Archivée';
       default:          return 'À faire';
     }
+  }
+
+  String? _validateTitle(String? value) {
+    final text = (value ?? '').trim();
+    final hasAudio = audioPath != null;
+    if (text.isEmpty && !hasAudio) {
+      return 'Titre requis si aucun audio';
+    }
+    if (text.length > 80) {
+      return 'Maximum 80 caractères';
+    }
+    return null;
+  }
+
+  String? _validateDescription(String? value) {
+    final text = (value ?? '').trim();
+    if (text.length > 500) {
+      return 'Maximum 500 caractères';
+    }
+    return null;
+  }
+
+  String? _validateDeadline(String? value) {
+    final text = (value ?? '').trim();
+    if (text.isEmpty) return null;
+    final parsed = DateTime.tryParse(text);
+    if (parsed == null) return 'Date invalide';
+    if (parsed.year < 2000 || parsed.year > 2100) {
+      return 'Date hors plage (2000-2100)';
+    }
+    return null;
+  }
+
+  List<Task> _filteredTasks() {
+    final query = _searchController.text.trim().toLowerCase();
+    return tasks.where((t) {
+      final byStatus = _statusFilter == 'all' || t.status == _statusFilter;
+      final byText = query.isEmpty ||
+          t.title.toLowerCase().contains(query) ||
+          (t.description ?? '').toLowerCase().contains(query);
+      return byStatus && byText;
+    }).toList();
+  }
+
+  Future<void> _moveTaskToStatus(Task task, String newStatus) async {
+    if (task.status == newStatus) return;
+    task.status = newStatus;
+    await isarService.updateTask(task);
+    await NotificationService.instance.notifyTaskUpdated(task.title, newStatus);
+    await loadTasks();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -491,71 +563,84 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final isFormPage = _currentPage == 1;
     return Scaffold(
       backgroundColor: _surface,
-      appBar: _buildAppBar(),
-      body: Column(
-        children: [
-          if (_showForm)
-            Stack(
-              children: [
-                _buildForm(),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: GestureDetector(
-                    onTap: () => setState(() => _showForm = false),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(6),
-                      child: const Icon(Icons.close, size: 20, color: Colors.black54),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          if (!_showForm)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: ElevatedButton.icon(
-                onPressed: () => setState(() => _showForm = true),
-                icon: const Icon(Icons.add_circle_outline),
-                label: const Text('Ajouter une tâche'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  elevation: 2,
-                ),
-              ),
-            ),
-          _buildList(),
+      appBar: _buildAppBar(isFormPage: isFormPage),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 320),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.04, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        ),
+        child: KeyedSubtree(
+          key: ValueKey<int>(_currentPage),
+          child: _buildCurrentPage(),
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentPage,
+        onDestinationSelected: (i) => setState(() => _currentPage = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.checklist_rounded),
+            label: 'Liste',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.post_add_rounded),
+            label: 'Ajouter',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.view_kanban_outlined),
+            label: 'Board',
+          ),
         ],
       ),
     );
   }
 
+  Widget _buildCurrentPage() {
+    if (_currentPage == 1) {
+      return SafeArea(
+        child: SingleChildScrollView(
+          child: _buildForm(),
+        ),
+      );
+    }
+    if (_currentPage == 2) {
+      return _buildKanbanBoard();
+    }
+    return Column(
+      children: [
+        _buildSearchBar(),
+        _buildListFilters(),
+        _buildList(),
+      ],
+    );
+  }
+
   // ── AppBar ────────────────────────────────────────────────────────────────
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar({required bool isFormPage}) {
     return AppBar(
       systemOverlayStyle: SystemUiOverlayStyle.light,
       backgroundColor: _primary,
       foregroundColor: Colors.white,
       elevation: 0,
-      title: const Text('Mes tâches',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
+      title: Text(
+        isFormPage
+            ? (_editingTask == null ? 'Ajouter une tâche' : 'Modifier la tâche')
+            : 'Mes tâches',
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+      ),
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 16),
@@ -580,6 +665,69 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     );
   }
 
+  Widget _buildListFilters() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+        children: [
+          _filterChip('Tout', 'all'),
+          const SizedBox(width: 8),
+          _filterChip('À faire', 'pending'),
+          const SizedBox(width: 8),
+          _filterChip('En cours', 'in_progress'),
+          const SizedBox(width: 8),
+          _filterChip('Terminées', 'completed'),
+        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          hintText: 'Rechercher une tâche...',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchController.text.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, String value) {
+    final selected = _statusFilter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => setState(() => _statusFilter = value),
+      selectedColor: _primary.withOpacity(0.2),
+      labelStyle: TextStyle(
+        color: selected ? _primary : Colors.grey[700],
+        fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+      ),
+    );
+  }
+
   // ── Formulaire ────────────────────────────────────────────────────────────
 
   Widget _buildForm() {
@@ -599,16 +747,31 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
         color: _cardBg,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
+          child: Form(
+            key: _formKey,
+            autovalidateMode: _autoValidateMode,
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Titre
-              _input(titleController, 'Titre de la tâche', Icons.edit_note_rounded),
+              _input(
+                titleController,
+                'Titre de la tâche',
+                Icons.edit_note_rounded,
+                validator: _validateTitle,
+                maxLength: 80,
+              ),
               const SizedBox(height: 10),
 
               // Description
-              _input(descriptionController, 'Description (optionnelle)',
-                  Icons.notes_rounded, maxLines: 2),
+              _input(
+                descriptionController,
+                'Description (optionnelle)',
+                Icons.notes_rounded,
+                maxLines: 2,
+                validator: _validateDescription,
+                maxLength: 500,
+              ),
               const SizedBox(height: 10),
 
               // Statut & Priorité
@@ -619,6 +782,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
                   icon: Icons.flag_outlined,
                   items: const {
                     'pending': 'À faire',
+                    'in_progress': 'En cours',
                     'completed': 'Terminée',
                     'archived': 'Archivée',
                   },
@@ -645,9 +809,10 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
               GestureDetector(
                 onTap: _pickDate,
                 child: AbsorbPointer(
-                  child: TextField(
+                  child: TextFormField(
                     controller: deadlineController,
                     readOnly: true,
+                    validator: _validateDeadline,
                     decoration: _inputDec(
                       deadlineController.text.isEmpty
                           ? 'Échéance (optionnelle)'
@@ -742,6 +907,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
               // Barre inférieure : audio WhatsApp + bouton Ajouter
               _buildBottomBar(),
             ],
+            ),
           ),
         ),
       ),
@@ -945,25 +1111,173 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
   // ── Liste ─────────────────────────────────────────────────────────────────
 
   Widget _buildList() {
+    final filteredTasks = _filteredTasks();
+
     return Expanded(
-      child: tasks.isEmpty
+      child: filteredTasks.isEmpty
           ? _emptyState()
           : ListView.builder(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 90),
-              itemCount: tasks.length,
+              itemCount: filteredTasks.length,
               itemBuilder: (_, i) => _TaskCard(
-                task: tasks[i],
-                onEdit: () => _startEditing(tasks[i]),
-                onDelete: () => deleteTask(tasks[i].id),
-                onTranscribeAudio: tasks[i].audioPath != null && tasks[i].audioPath!.isNotEmpty
-                    ? () => _transcribeTaskAudio(tasks[i])
+                task: filteredTasks[i],
+                onEdit: () => _startEditing(filteredTasks[i]),
+                onDelete: () => deleteTask(filteredTasks[i].id),
+                onTranscribeAudio: filteredTasks[i].audioPath != null && filteredTasks[i].audioPath!.isNotEmpty
+                    ? () => _transcribeTaskAudio(filteredTasks[i])
                     : null,
-                transcribing: _transcribingTaskId == tasks[i].id,
-                priorityColor: _priorityColor(tasks[i].priority),
-                statusColor: _statusColor(tasks[i].status),
-                statusLabel: _statusLabel(tasks[i].status),
+                transcribing: _transcribingTaskId == filteredTasks[i].id,
+                priorityColor: _priorityColor(filteredTasks[i].priority),
+                statusColor: _statusColor(filteredTasks[i].status),
+                statusLabel: _statusLabel(filteredTasks[i].status),
               ),
             ),
+    );
+  }
+
+  Widget _buildKanbanBoard() {
+    final source = _filteredTasks();
+    final pending = source.where((t) => t.status == 'pending').toList();
+    final inProgress = source.where((t) => t.status == 'in_progress').toList();
+    final completed = source.where((t) => t.status == 'completed').toList();
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFEEF2FF), Color(0xFFF8FAFF)],
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildSearchBar(),
+          const SizedBox(height: 10),
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+              children: [
+                _buildBoardColumn(
+                  title: 'À faire',
+                  statusKey: 'pending',
+                  color: _amber,
+                  columnTasks: pending,
+                ),
+                const SizedBox(width: 12),
+                _buildBoardColumn(
+                  title: 'En cours',
+                  statusKey: 'in_progress',
+                  color: _blue,
+                  columnTasks: inProgress,
+                ),
+                const SizedBox(width: 12),
+                _buildBoardColumn(
+                  title: 'Terminées',
+                  statusKey: 'completed',
+                  color: _green,
+                  columnTasks: completed,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBoardColumn({
+    required String title,
+    required String statusKey,
+    required Color color,
+    required List<Task> columnTasks,
+  }) {
+    return Container(
+      width: 320,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.circle, size: 10, color: color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$title (${columnTasks.length})',
+                    style: TextStyle(fontWeight: FontWeight.w700, color: color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: DragTarget<Task>(
+              onWillAccept: (task) => task != null,
+              onAccept: (task) => _moveTaskToStatus(task, statusKey),
+              builder: (context, _, __) {
+                if (columnTasks.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F8FF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text('Glissez une tâche ici'),
+                  );
+                }
+
+                return ListView.separated(
+                  itemCount: columnTasks.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) {
+                    final task = columnTasks[i];
+                    return LongPressDraggable<Task>(
+                      data: task,
+                      feedback: Material(
+                        color: Colors.transparent,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 280),
+                          child: _BoardTaskTile(task: task),
+                        ),
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.4,
+                        child: _BoardTaskTile(task: task),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => _startEditing(task),
+                        child: _BoardTaskTile(task: task),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1017,10 +1331,14 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       );
 
   Widget _input(TextEditingController c, String label, IconData icon,
-      {int maxLines = 1}) =>
-      TextField(
+      {int maxLines = 1,
+      String? Function(String?)? validator,
+      int? maxLength}) =>
+      TextFormField(
         controller: c,
         maxLines: maxLines,
+        validator: validator,
+        maxLength: maxLength,
         decoration: _inputDec(label, icon),
       );
 
@@ -1645,4 +1963,98 @@ class _Tag extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w500)),
       );
+}
+
+class _BoardTaskTile extends StatelessWidget {
+  final Task task;
+
+  const _BoardTaskTile({required this.task});
+
+  Color _priorityColor(String? p) {
+    switch (p) {
+      case 'high':
+        return _red;
+      case 'medium':
+        return _amber;
+      case 'low':
+        return _green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final priorityColor = _priorityColor(task.priority);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(left: BorderSide(color: priorityColor, width: 4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            task.title,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (task.description != null && task.description!.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              task.description!.trim(),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              if (task.priority != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: priorityColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    task.priority!,
+                    style: TextStyle(
+                      color: priorityColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              if (task.deadline != null && task.deadline!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '📅 ${task.deadline!}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
