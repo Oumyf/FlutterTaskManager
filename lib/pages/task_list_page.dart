@@ -6,6 +6,8 @@ import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter_whisper_kit/flutter_whisper_kit.dart';
+import 'package:whisper_kit/whisper_kit.dart' as wk;
 import '../models/task.dart';
 import '../services/isar_service.dart';
 import '../services/notification_serve.dart';
@@ -32,10 +34,17 @@ class TaskListPage extends StatefulWidget {
 
 class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderStateMixin {
   bool _showForm = true;
+  Task? _editingTask;
+  int? _transcribingTaskId;
+  static const String _transcriptMarker = '\n\n[TRANSCRIPTION_AUDIO]\n';
 
   // Services
   final IsarService isarService = IsarService();
   final ImagePicker _picker = ImagePicker();
+  final FlutterWhisperKit _whisperKit = FlutterWhisperKit();
+  final wk.Whisper _androidWhisper = const wk.Whisper(model: wk.WhisperModel.base);
+  bool _isTranscribingAudio = false;
+  bool _whisperModelLoaded = false;
 
   // Formulaire
   final titleController       = TextEditingController();
@@ -106,11 +115,223 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       task.title,
       deadline: task.deadline,
     );
+    _showSnack('Tâche créée');
     _resetForm();
-    loadTasks();
+    await loadTasks();
+  }
 
-  // Exemple d'appel à placer lors de la modification d'une tâche :
-  // await NotificationService.instance.notifyTaskUpdated(task.title, task.status);
+  Future<void> updateTask() async {
+    final current = _editingTask;
+    if (current == null) return;
+
+    final hasTitle = titleController.text.trim().isNotEmpty;
+    final hasAudio = audioPath != null;
+    if (!hasTitle && !hasAudio) {
+      _showSnack('Écrivez un titre ou enregistrez un audio', isError: true);
+      return;
+    }
+
+    current
+      ..title = hasTitle ? titleController.text.trim() : '🎤 Note vocale'
+      ..description = descriptionController.text
+      ..status = status
+      ..priority = priority
+      ..deadline = deadlineController.text
+      ..imagePath = imagePath
+      ..videoPath = videoPath
+      ..audioPath = audioPath;
+
+    await isarService.updateTask(current);
+    await NotificationService.instance.notifyTaskUpdated(current.title, current.status);
+    _showSnack('Tâche modifiée');
+    _resetForm();
+    setState(() => _editingTask = null);
+    await loadTasks();
+  }
+
+  Future<void> _submitTask() async {
+    if (_editingTask == null) {
+      await addTask();
+      return;
+    }
+    await updateTask();
+  }
+
+  void _startEditing(Task task) {
+    titleController.text = task.title;
+    descriptionController.text = task.description ?? '';
+    deadlineController.text = task.deadline ?? '';
+
+    setState(() {
+      _editingTask = task;
+      status = task.status;
+      priority = task.priority;
+      imagePath = task.imagePath;
+      videoPath = task.videoPath;
+      audioPath = task.audioPath;
+      _hasAudioDraft = task.audioPath != null && task.audioPath!.isNotEmpty;
+      _showForm = true;
+    });
+  }
+
+  Future<void> _transcribeDraftAudio() async {
+    if (audioPath == null || audioPath!.isEmpty) {
+      _showSnack('Aucun audio à transcrire', isError: true);
+      return;
+    }
+    if (Platform.isAndroid) {
+      await _transcribeOnAndroid();
+      return;
+    }
+    if (!(Platform.isIOS || Platform.isMacOS)) {
+      _showSnack('Transcription non supportée sur cette plateforme', isError: true);
+      return;
+    }
+
+    setState(() => _isTranscribingAudio = true);
+    try {
+      if (!_whisperModelLoaded) {
+        await _whisperKit.loadModel('base');
+        _whisperModelLoaded = true;
+      }
+
+      final result = await _whisperKit.transcribeFromFile(audioPath!);
+      final text = result?.text.trim() ?? '';
+      if (text.isEmpty) {
+        _showSnack('Transcription vide', isError: true);
+        return;
+      }
+
+      _appendTranscription(text);
+      _showSnack('Transcription ajoutée à la description');
+    } catch (e) {
+      _showSnack('Erreur transcription: $e', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isTranscribingAudio = false);
+      }
+    }
+  }
+
+  Future<void> _transcribeOnAndroid() async {
+    setState(() => _isTranscribingAudio = true);
+    try {
+      if (audioPath == null || !audioPath!.toLowerCase().endsWith('.wav')) {
+        _showSnack('Enregistrez un nouvel audio WAV 16 kHz pour Android', isError: true);
+        return;
+      }
+
+      final result = await _androidWhisper.transcribe(
+        transcribeRequest: wk.TranscribeRequest(
+          audio: audioPath!,
+          language: 'fr',
+          isNoTimestamps: true,
+          isTranslate: false,
+          threads: 4,
+          nProcessors: 2,
+        ),
+      );
+
+      final text = result.text.trim();
+      if (text.isEmpty) {
+        _showSnack('Transcription vide, réessayez', isError: true);
+        return;
+      }
+
+      _appendTranscription(text);
+      _showSnack('Transcription Android ajoutée');
+    } catch (e) {
+      _showSnack('Erreur Whisper Android: $e', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() => _isTranscribingAudio = false);
+      }
+    }
+  }
+
+  void _appendTranscription(String text) {
+    final existing = descriptionController.text;
+    descriptionController.text = _upsertTranscript(existing, text);
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  String _upsertTranscript(String base, String transcript) {
+    final cleaned = transcript.trim();
+    if (cleaned.isEmpty) return base;
+
+    final idx = base.indexOf(_transcriptMarker);
+    if (idx >= 0) {
+      return '${base.substring(0, idx)}$_transcriptMarker$cleaned';
+    }
+
+    final prefix = base.trim();
+    if (prefix.isEmpty) return '$_transcriptMarker$cleaned';
+    return '$prefix$_transcriptMarker$cleaned';
+  }
+
+  String? _extractTranscript(String? description) {
+    if (description == null || description.isEmpty) return null;
+    final idx = description.indexOf(_transcriptMarker);
+    if (idx < 0) return null;
+    final text = description.substring(idx + _transcriptMarker.length).trim();
+    return text.isEmpty ? null : text;
+  }
+
+  Future<void> _transcribeTaskAudio(Task task) async {
+    final path = task.audioPath;
+    if (path == null || path.isEmpty) {
+      _showSnack('Aucun audio à transcrire', isError: true);
+      return;
+    }
+
+    setState(() => _transcribingTaskId = task.id);
+    try {
+      String text = '';
+
+      if (Platform.isAndroid) {
+        if (!path.toLowerCase().endsWith('.wav')) {
+          _showSnack('Audio non compatible Android (WAV 16 kHz requis)', isError: true);
+          return;
+        }
+        final res = await _androidWhisper.transcribe(
+          transcribeRequest: wk.TranscribeRequest(
+            audio: path,
+            language: 'fr',
+            isNoTimestamps: true,
+            isTranslate: false,
+            threads: 4,
+            nProcessors: 2,
+          ),
+        );
+        text = res.text.trim();
+      } else if (Platform.isIOS || Platform.isMacOS) {
+        if (!_whisperModelLoaded) {
+          await _whisperKit.loadModel('base');
+          _whisperModelLoaded = true;
+        }
+        final res = await _whisperKit.transcribeFromFile(path);
+        text = res?.text.trim() ?? '';
+      } else {
+        _showSnack('Transcription non supportée sur cette plateforme', isError: true);
+        return;
+      }
+
+      if (text.isEmpty) {
+        _showSnack('Transcription vide', isError: true);
+        return;
+      }
+
+      task.description = _upsertTranscript(task.description ?? '', text);
+      await isarService.updateTask(task);
+      await loadTasks();
+      _showSnack('Transcription ajoutée à la tâche');
+    } catch (e) {
+      _showSnack('Erreur transcription tâche: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _transcribingTaskId = null);
+    }
   }
 
   Future<void> deleteTask(int id) async {
@@ -128,6 +349,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       imagePath      = null;
       videoPath      = null;
       audioPath      = null;
+      _editingTask   = null;
       _hasAudioDraft = false;
       _isRecording   = false;
       _recordDuration = Duration.zero;
@@ -142,13 +364,24 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       _showSnack('Permission micro refusée', isError: true);
       return;
     }
+    final isAndroid = Platform.isAndroid;
     final dir  = await getApplicationDocumentsDirectory();
-    final path = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    await _recorder.start(
-      path: path,
-      encoder: AudioEncoder.aacLc,
-      bitRate: 128000,
-    );
+    final ext = isAndroid ? 'wav' : 'm4a';
+    final path = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.$ext';
+    if (isAndroid) {
+      await _recorder.start(
+        path: path,
+        encoder: AudioEncoder.wav,
+        samplingRate: 16000,
+        numChannels: 1,
+      );
+    } else {
+      await _recorder.start(
+        path: path,
+        encoder: AudioEncoder.aacLc,
+        bitRate: 128000,
+      );
+    }
     setState(() {
       _isRecording    = true;
       _recordDuration = Duration.zero;
@@ -472,6 +705,36 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
                     _hasAudioDraft = false;
                   }),
                 ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _isTranscribingAudio ? null : _transcribeDraftAudio,
+                  icon: _isTranscribingAudio
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.subtitles_outlined),
+                  label: Text(_isTranscribingAudio
+                      ? 'Transcription en cours...'
+                      : 'Transcrire l\'audio'),
+                ),
+                if (_extractTranscript(descriptionController.text) != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _blue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _blue.withOpacity(0.25)),
+                    ),
+                    child: Text(
+                      _extractTranscript(descriptionController.text)!,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
               ],
 
               const SizedBox(height: 14),
@@ -520,7 +783,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
         ),
         // Bouton Ajouter
         ElevatedButton(
-          onPressed: addTask,
+          onPressed: _submitTask,
           style: ElevatedButton.styleFrom(
             backgroundColor: _primary,
             foregroundColor: Colors.white,
@@ -529,13 +792,20 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             elevation: 2,
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_circle_outline, size: 18),
-              SizedBox(width: 6),
-              Text('Ajouter',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              Icon(
+                _editingTask == null
+                    ? Icons.add_circle_outline
+                    : Icons.edit_note_rounded,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _editingTask == null ? 'Ajouter' : 'Mettre à jour',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
             ],
           ),
         ),
@@ -683,7 +953,12 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
               itemCount: tasks.length,
               itemBuilder: (_, i) => _TaskCard(
                 task: tasks[i],
+                onEdit: () => _startEditing(tasks[i]),
                 onDelete: () => deleteTask(tasks[i].id),
+                onTranscribeAudio: tasks[i].audioPath != null && tasks[i].audioPath!.isNotEmpty
+                    ? () => _transcribeTaskAudio(tasks[i])
+                    : null,
+                transcribing: _transcribingTaskId == tasks[i].id,
                 priorityColor: _priorityColor(tasks[i].priority),
                 statusColor: _statusColor(tasks[i].status),
                 statusLabel: _statusLabel(tasks[i].status),
@@ -958,14 +1233,20 @@ class _AudioPlaybackChipState extends State<_AudioPlaybackChip> {
 // ─────────────────────────────────────────────────────────────────────────────
 class _TaskCard extends StatelessWidget {
   final Task task;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback? onTranscribeAudio;
+  final bool transcribing;
   final Color priorityColor;
   final Color statusColor;
   final String statusLabel;
 
   const _TaskCard({
     required this.task,
+    required this.onEdit,
     required this.onDelete,
+    required this.onTranscribeAudio,
+    this.transcribing = false,
     required this.priorityColor,
     required this.statusColor,
     required this.statusLabel,
@@ -1001,6 +1282,18 @@ class _TaskCard extends StatelessWidget {
               ),
               _StatusBadge(label: statusLabel, color: statusColor),
               const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onEdit,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _blue.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.edit_outlined, color: _blue, size: 18),
+                ),
+              ),
+              const SizedBox(width: 6),
               GestureDetector(
                 onTap: onDelete,
                 child: Container(
@@ -1045,6 +1338,43 @@ class _TaskCard extends StatelessWidget {
             if (task.audioPath != null && task.audioPath!.isNotEmpty) ...[
               const SizedBox(height: 10),
               _AudioBubble(path: task.audioPath!),
+              if (onTranscribeAudio != null) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: transcribing ? null : onTranscribeAudio,
+                    icon: transcribing
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.subtitles_outlined, size: 18),
+                    label: Text(transcribing ? 'Transcription...' : 'Transcrire cet audio'),
+                  ),
+                ),
+              ],
+              if (task.description != null &&
+                  task.description!.contains(_TaskListPageState._transcriptMarker)) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _blue.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _blue.withOpacity(0.25)),
+                  ),
+                  child: Text(
+                    task.description!
+                        .split(_TaskListPageState._transcriptMarker)
+                        .last
+                        .trim(),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
             ],
 
             const SizedBox(height: 10),

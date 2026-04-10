@@ -8,15 +8,16 @@ import 'package:timezone/data/latest.dart' as tz_data;
 // Gère les notifications locales : création tâche, modification, rappel échéance
 // ─────────────────────────────────────────────────────────────────────────────
 class NotificationService {
-      static final navigatorKey = GlobalKey<NavigatorState>();
-    // Affiche une notification FCM (titre + body)
-    Future<void> showFCMNotification(String title, String body) async {
-      await _show(
-        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        title: title,
-        body: body,
-      );
-    }
+  static final navigatorKey = GlobalKey<NavigatorState>();
+
+  // Affiche une notification FCM (titre + body)
+  Future<void> showFCMNotification(String title, String body) async {
+    await _show(
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: title,
+      body: body,
+    );
+  }
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 

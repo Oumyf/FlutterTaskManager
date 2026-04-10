@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:task_media_app/pages/task_list_page.dart';
 import 'package:task_media_app/services/notification_serve.dart';
 
@@ -14,20 +13,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint('📩 Background message: ${message.messageId}');
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. Canal Android (obligatoire Android 8+)
-// ─────────────────────────────────────────────────────────────────────────────
-const _androidChannel = AndroidNotificationChannel(
-  'high_importance_channel',
-  'Notifications importantes',
-  description: 'Canal pour les notifications de tâches',
-  importance: Importance.max,
-  playSound: true,
-);
-
-final FlutterLocalNotificationsPlugin _localNotifications =
-    FlutterLocalNotificationsPlugin();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. main() — tout l'init ici, jamais dans build()
@@ -50,51 +35,6 @@ void main() async {
   debugPrint('✅ FCM Token: $token');
 
   runApp(const MyApp());
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Init notifications locales (nécessaire pour afficher en foreground)
-// ─────────────────────────────────────────────────────────────────────────────
-Future<void> _initLocalNotifications() async {
-  // Créer le canal Android
-  await _localNotifications
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(_androidChannel);
-
-  // Init du plugin
-  const androidSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-  const iosSettings = DarwinInitializationSettings(
-    requestAlertPermission: false,
-    requestBadgePermission: false,
-    requestSoundPermission: false,
-  );
-  await _localNotifications.initialize(
-    const InitializationSettings(
-        android: androidSettings, iOS: iosSettings),
-  );
-
-  // Forcer l'affichage des notifications FCM en FOREGROUND sur iOS
-  await FirebaseMessaging.instance
-      .setForegroundNotificationPresentationOptions(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Demande de permission
-// ─────────────────────────────────────────────────────────────────────────────
-Future<void> _requestPermissions() async {
-  final settings = await FirebaseMessaging.instance.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-    provisional: false,
-  );
-  debugPrint('🔔 Permission: ${settings.authorizationStatus}');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
