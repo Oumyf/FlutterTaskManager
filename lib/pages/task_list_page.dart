@@ -46,7 +46,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
   final IsarService isarService = IsarService();
   final ImagePicker _picker = ImagePicker();
   final FlutterWhisperKit _whisperKit = FlutterWhisperKit();
-  final wk.Whisper _androidWhisper = const wk.Whisper(model: wk.WhisperModel.base);
+  final wk.Whisper _androidWhisper = const wk.Whisper(model: wk.WhisperModel.tiny);
   bool _isTranscribingAudio = false;
   bool _whisperModelLoaded = false;
 
@@ -78,6 +78,17 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
     loadTasks();
+    _preloadWhisperModel();
+  }
+
+  // Pré-charge le modèle Whisper en background pour que la 1ère transcription soit rapide
+  Future<void> _preloadWhisperModel() async {
+    if (Platform.isIOS || Platform.isMacOS) {
+      try {
+        await _whisperKit.loadModel('tiny');
+        _whisperModelLoaded = true;
+      } catch (_) {}
+    }
   }
 
   @override
@@ -95,6 +106,10 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
 
   Future<void> loadTasks() async {
     final loaded = await isarService.getAllTasks();
+    print('[loadTasks] Statuts récupérés :');
+    for (final t in loaded) {
+      print('id=${t.id}, title=${t.title}, status=${t.status}');
+    }
     setState(() => tasks = loaded);
   }
 
@@ -209,7 +224,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     setState(() => _isTranscribingAudio = true);
     try {
       if (!_whisperModelLoaded) {
-        await _whisperKit.loadModel('base');
+        await _whisperKit.loadModel('tiny');
         _whisperModelLoaded = true;
       }
 
@@ -232,13 +247,15 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
   }
 
   Future<void> _transcribeOnAndroid() async {
+    if (audioPath == null || !audioPath!.toLowerCase().endsWith('.wav')) {
+      _showSnack('Enregistrez un nouvel audio WAV 16 kHz pour Android', isError: true);
+      return;
+    }
+
+    // Dialog de progression — Whisper peut prendre 10-30s sur un appareil entrée de gamme
+    _showTranscribingDialog();
     setState(() => _isTranscribingAudio = true);
     try {
-      if (audioPath == null || !audioPath!.toLowerCase().endsWith('.wav')) {
-        _showSnack('Enregistrez un nouvel audio WAV 16 kHz pour Android', isError: true);
-        return;
-      }
-
       final result = await _androidWhisper.transcribe(
         transcribeRequest: wk.TranscribeRequest(
           audio: audioPath!,
@@ -246,9 +263,11 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
           isNoTimestamps: true,
           isTranslate: false,
           threads: 4,
-          nProcessors: 2,
+          nProcessors: 1,
         ),
       );
+
+      if (mounted) Navigator.of(context, rootNavigator: true).pop(); // ferme le dialog
 
       final text = result.text.trim();
       if (text.isEmpty) {
@@ -257,9 +276,15 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       }
 
       _appendTranscription(text);
-      _showSnack('Transcription Android ajoutée');
+      _showSnack('Transcription ajoutée');
     } catch (e) {
-      _showSnack('Erreur Whisper Android: $e', isError: true);
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      final msg = e.toString();
+      if (msg.contains('MODEL_DOWNLOAD_FAILED') || msg.contains('huggingface') || msg.contains('Network error')) {
+        _showModelDownloadDialog();
+      } else {
+        _showSnack('Erreur transcription: $msg', isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _isTranscribingAudio = false);
@@ -326,7 +351,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
         text = res.text.trim();
       } else if (Platform.isIOS || Platform.isMacOS) {
         if (!_whisperModelLoaded) {
-          await _whisperKit.loadModel('base');
+          await _whisperKit.loadModel('tiny');
           _whisperModelLoaded = true;
         }
         final res = await _whisperKit.transcribeFromFile(path);
@@ -470,6 +495,45 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     }
   }
 
+  void _showTranscribingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Expanded(
+              child: Text('Transcription en cours…\nCela peut prendre quelques secondes.'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showModelDownloadDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Téléchargement requis'),
+        content: const Text(
+          'La transcription audio nécessite de télécharger le modèle Whisper (~39 Mo) '
+          'depuis internet.\n\n'
+          'Connectez-vous à internet et réessayez. '
+          'Le téléchargement n\'est effectué qu\'une seule fois.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
@@ -539,6 +603,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     return null;
   }
 
+  // Filtre pour la vue liste (respecte _statusFilter)
   List<Task> _filteredTasks() {
     final query = _searchController.text.trim().toLowerCase();
     return tasks.where((t) {
@@ -550,12 +615,26 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     }).toList();
   }
 
+  // Filtre pour le Kanban : ignore _statusFilter (les colonnes = les statuts)
+  List<Task> _boardFilteredTasks() {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return List.from(tasks);
+    return tasks.where((t) =>
+      t.title.toLowerCase().contains(query) ||
+      (t.description ?? '').toLowerCase().contains(query),
+    ).toList();
+  }
+
   Future<void> _moveTaskToStatus(Task task, String newStatus) async {
     if (task.status == newStatus) return;
     task.status = newStatus;
-    await isarService.updateTask(task);
-    await NotificationService.instance.notifyTaskUpdated(task.title, newStatus);
-    await loadTasks();
+    try {
+      await isarService.updateTask(task);
+      await NotificationService.instance.notifyTaskUpdated(task.title, newStatus);
+      await loadTasks();
+    } catch (e) {
+      _showSnack('Erreur lors du déplacement : $e', isError: true);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -588,7 +667,13 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentPage,
-        onDestinationSelected: (i) => setState(() => _currentPage = i),
+        onDestinationSelected: (i) {
+          if (i == 1 && _currentPage != 1) {
+            // Naviguer vers "Ajouter" via la barre → toujours en mode création
+            _resetForm();
+          }
+          setState(() => _currentPage = i);
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.checklist_rounded),
@@ -648,7 +733,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha:0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -720,7 +805,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       label: Text(label),
       selected: selected,
       onSelected: (_) => setState(() => _statusFilter = value),
-      selectedColor: _primary.withOpacity(0.2),
+      selectedColor: _primary.withValues(alpha:0.2),
       labelStyle: TextStyle(
         color: selected ? _primary : Colors.grey[700],
         fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
@@ -742,7 +827,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       padding: const EdgeInsets.fromLTRB(14, 4, 14, 20),
       child: Card(
         elevation: 8,
-        shadowColor: _primary.withOpacity(0.3),
+        shadowColor: _primary.withValues(alpha:0.3),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         color: _cardBg,
         child: Padding(
@@ -776,7 +861,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
 
               // Statut & Priorité
               Row(children: [
-                Flexible(child: _dropdown(
+                Expanded(child: _dropdown(
                   value: status,
                   label: 'Statut',
                   icon: Icons.flag_outlined,
@@ -790,7 +875,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
                   isDense: true,
                 )),
                 const SizedBox(width: 8),
-                Flexible(child: _dropdown(
+                Expanded(child: _dropdown(
                   value: priority,
                   label: 'Priorité',
                   icon: Icons.bar_chart_rounded,
@@ -890,9 +975,9 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
                     width: double.infinity,
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _blue.withOpacity(0.08),
+                      color: _blue.withValues(alpha:0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _blue.withOpacity(0.25)),
+                      border: Border.all(color: _blue.withValues(alpha:0.25)),
                     ),
                     child: Text(
                       _extractTranscript(descriptionController.text)!,
@@ -931,7 +1016,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: _green.withOpacity(0.1),
+                color: _green.withValues(alpha:0.1),
                 shape: BoxShape.circle,
                 border: Border.all(color: _green, width: 1.5),
               ),
@@ -983,9 +1068,9 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _green.withOpacity(0.08),
+        color: _green.withValues(alpha:0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _green.withOpacity(0.3)),
+        border: Border.all(color: _green.withValues(alpha:0.3)),
       ),
       child: Row(
         children: [
@@ -995,7 +1080,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: _red.withOpacity(0.1),
+                color: _red.withValues(alpha:0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.delete_outline, color: _red, size: 20),
@@ -1012,7 +1097,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: _red.withOpacity(
+                      color: _red.withValues(alpha:
                           0.5 + 0.5 * _pulseController.value),
                       shape: BoxShape.circle,
                     ),
@@ -1070,7 +1155,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                    color: _primary.withOpacity(0.1),
+                    color: _primary.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(10)),
                 child: const Icon(Icons.photo_library_outlined, color: _primary),
               ),
@@ -1085,7 +1170,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                    color: _blue.withOpacity(0.1),
+                    color: _blue.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(10)),
                 child: const Icon(Icons.camera_alt_outlined, color: _blue),
               ),
@@ -1137,9 +1222,9 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
 
   Widget _buildKanbanBoard() {
     final source = _filteredTasks();
-    final pending = source.where((t) => t.status == 'pending').toList();
+    final pending    = source.where((t) => t.status == 'pending').toList();
     final inProgress = source.where((t) => t.status == 'in_progress').toList();
-    final completed = source.where((t) => t.status == 'completed').toList();
+    final completed  = source.where((t) => t.status == 'completed').toList();
 
     return Container(
       decoration: const BoxDecoration(
@@ -1154,31 +1239,37 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
           _buildSearchBar(),
           const SizedBox(height: 10),
           Expanded(
-            child: ListView(
+            // SingleChildScrollView + Row au lieu de ListView :
+            // ListView mange les gestes horizontaux et empêche le drag entre colonnes
+            child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none, // autorise le feedback de drag à dépasser les bords
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-              children: [
-                _buildBoardColumn(
-                  title: 'À faire',
-                  statusKey: 'pending',
-                  color: _amber,
-                  columnTasks: pending,
-                ),
-                const SizedBox(width: 12),
-                _buildBoardColumn(
-                  title: 'En cours',
-                  statusKey: 'in_progress',
-                  color: _blue,
-                  columnTasks: inProgress,
-                ),
-                const SizedBox(width: 12),
-                _buildBoardColumn(
-                  title: 'Terminées',
-                  statusKey: 'completed',
-                  color: _green,
-                  columnTasks: completed,
-                ),
-              ],
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildBoardColumn(
+                    title: 'À faire',
+                    statusKey: 'pending',
+                    color: _amber,
+                    columnTasks: pending,
+                  ),
+                  const SizedBox(width: 12),
+                  _buildBoardColumn(
+                    title: 'En cours',
+                    statusKey: 'in_progress',
+                    color: _blue,
+                    columnTasks: inProgress,
+                  ),
+                  const SizedBox(width: 12),
+                  _buildBoardColumn(
+                    title: 'Terminées',
+                    statusKey: 'completed',
+                    color: _green,
+                    columnTasks: completed,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1192,91 +1283,113 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
     required Color color,
     required List<Task> columnTasks,
   }) {
-    return Container(
-      width: 320,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
+    // Hauteur fixe : compatible avec SingleChildScrollView horizontal
+    // (Expanded n'est pas utilisable ici car le parent Row n'est pas contraint en hauteur)
+    final screenH = MediaQuery.of(context).size.height - 200;
+
+    return SizedBox(
+      width: 280,
+      height: screenH,
+      child: Container(
+        clipBehavior: Clip.none, // le feedback de drag doit pouvoir sortir de la colonne
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha:0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.circle, size: 10, color: color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '$title (${columnTasks.length})',
-                    style: TextStyle(fontWeight: FontWeight.w700, color: color),
+          ],
+        ),
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // En-tête colonne
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha:0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.circle, size: 10, color: color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$title (${columnTasks.length})',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: color),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: DragTarget<Task>(
-              onWillAccept: (task) => task != null,
-              onAccept: (task) => _moveTaskToStatus(task, statusKey),
-              builder: (context, _, __) {
-                if (columnTasks.isEmpty) {
-                  return Container(
+            const SizedBox(height: 10),
+            // Zone de drop — couvre toute la hauteur restante
+            Expanded(
+              child: DragTarget<Task>(
+                onWillAcceptWithDetails: (_) => true,
+                onAcceptWithDetails: (details) => _moveTaskToStatus(details.data, statusKey),
+                builder: (context, candidateData, __) {
+                  final isHovered = candidateData.isNotEmpty;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF7F8FF),
+                      color: isHovered ? color.withValues(alpha:0.08) : Colors.transparent,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                      border: isHovered ? Border.all(color: color, width: 2) : null,
                     ),
-                    alignment: Alignment.center,
-                    child: const Text('Glissez une tâche ici'),
+                    // Column au lieu de ListView.separated : pas de conflit de gestes
+                    child: columnTasks.isEmpty
+                        ? Center(
+                            child: Text(
+                              isHovered ? 'Déposer ici ↓' : 'Glissez une tâche ici',
+                              style: TextStyle(
+                                color: isHovered ? color : Colors.grey,
+                                fontWeight: isHovered ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.all(4),
+                            child: Column(
+                              children: [
+                                for (final task in columnTasks) ...[
+                                  LongPressDraggable<Task>(
+                                    data: task,
+                                    hapticFeedbackOnStart: true,
+                                    feedback: Material(
+                                      color: Colors.transparent,
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(maxWidth: 260),
+                                        child: _BoardTaskTile(task: task),
+                                      ),
+                                    ),
+                                    childWhenDragging: Opacity(
+                                      opacity: 0.3,
+                                      child: _BoardTaskTile(task: task),
+                                    ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(12),
+                                      onTap: () => _startEditing(task),
+                                      child: _BoardTaskTile(task: task),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                ],
+                              ],
+                            ),
+                          ),
                   );
-                }
-
-                return ListView.separated(
-                  itemCount: columnTasks.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) {
-                    final task = columnTasks[i];
-                    return LongPressDraggable<Task>(
-                      data: task,
-                      feedback: Material(
-                        color: Colors.transparent,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 280),
-                          child: _BoardTaskTile(task: task),
-                        ),
-                      ),
-                      childWhenDragging: Opacity(
-                        opacity: 0.4,
-                        child: _BoardTaskTile(task: task),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => _startEditing(task),
-                        child: _BoardTaskTile(task: task),
-                      ),
-                    );
-                  },
-                );
-              },
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1289,11 +1402,11 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: _primary.withOpacity(0.06),
+              color: _primary.withValues(alpha:0.06),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.checklist_rounded,
-                size: 56, color: _primary.withOpacity(0.3)),
+                size: 56, color: _primary.withValues(alpha:0.3)),
           ),
           const SizedBox(height: 16),
           Text('Aucune tâche',
@@ -1374,7 +1487,7 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
-              color: active ? color.withOpacity(0.1) : Colors.grey[50],
+              color: active ? color.withValues(alpha:0.1) : Colors.grey[50],
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: active ? color : Colors.grey[300]!,
@@ -1426,9 +1539,9 @@ class _TaskListPageState extends State<TaskListPage> with SingleTickerProviderSt
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha:0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha:0.3)),
         ),
         child: Row(children: [
           Icon(icon, color: color, size: 18),
@@ -1469,7 +1582,7 @@ class _WaveformAnimation extends StatelessWidget {
               width: 3,
               height: h,
               decoration: BoxDecoration(
-                color: _green.withOpacity(0.7),
+                color: _green.withValues(alpha:0.7),
                 borderRadius: BorderRadius.circular(2),
               ),
             );
@@ -1497,6 +1610,17 @@ class _AudioPlaybackChipState extends State<_AudioPlaybackChip> {
   bool _playing = false;
 
   @override
+  void initState() {
+    super.initState();
+    _player.playerStateStream.listen((s) {
+      if (s.processingState == ProcessingState.completed && mounted) {
+        setState(() => _playing = false);
+        _player.seek(Duration.zero);
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _player.dispose();
     super.dispose();
@@ -1505,11 +1629,16 @@ class _AudioPlaybackChipState extends State<_AudioPlaybackChip> {
   Future<void> _toggle() async {
     if (_playing) {
       await _player.pause();
+      setState(() => _playing = false);
     } else {
-      await _player.setFilePath(widget.path);
-      await _player.play();
+      try {
+        await _player.setFilePath(widget.path);
+        await _player.play();
+        setState(() => _playing = true);
+      } catch (_) {
+        // fichier introuvable ou corrompu
+      }
     }
-    setState(() => _playing = !_playing);
   }
 
   @override
@@ -1517,9 +1646,9 @@ class _AudioPlaybackChipState extends State<_AudioPlaybackChip> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: _green.withOpacity(0.08),
+        color: _green.withValues(alpha:0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _green.withOpacity(0.3)),
+        border: Border.all(color: _green.withValues(alpha:0.3)),
       ),
       child: Row(children: [
         GestureDetector(
@@ -1579,7 +1708,7 @@ class _TaskCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha:0.06),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -1605,7 +1734,7 @@ class _TaskCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: _blue.withOpacity(0.08),
+                    color: _blue.withValues(alpha:0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.edit_outlined, color: _blue, size: 18),
@@ -1617,7 +1746,7 @@ class _TaskCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: _red.withOpacity(0.08),
+                    color: _red.withValues(alpha:0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.delete_outline,
@@ -1680,9 +1809,9 @@ class _TaskCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: _blue.withOpacity(0.08),
+                    color: _blue.withValues(alpha:0.08),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _blue.withOpacity(0.25)),
+                    border: Border.all(color: _blue.withValues(alpha:0.25)),
                   ),
                   child: Text(
                     task.description!
@@ -1741,7 +1870,9 @@ class _AudioBubbleState extends State<_AudioBubble> {
   void initState() {
     super.initState();
     _player.setFilePath(widget.path).then((_) {
-      setState(() => _total = _player.duration ?? Duration.zero);
+      if (mounted) setState(() => _total = _player.duration ?? Duration.zero);
+    }).catchError((_) {
+      // fichier audio introuvable ou corrompu
     });
     _player.positionStream.listen((p) {
       if (mounted) setState(() => _position = p);
@@ -1787,9 +1918,9 @@ class _AudioBubbleState extends State<_AudioBubble> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _green.withOpacity(0.08),
+        color: _green.withValues(alpha:0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _green.withOpacity(0.2)),
+        border: Border.all(color: _green.withValues(alpha:0.2)),
       ),
       child: Row(children: [
         // Bouton play/pause
@@ -1816,7 +1947,7 @@ class _AudioBubbleState extends State<_AudioBubble> {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress.clamp(0.0, 1.0),
-                  backgroundColor: _green.withOpacity(0.15),
+                  backgroundColor: _green.withValues(alpha:0.15),
                   valueColor: const AlwaysStoppedAnimation(_green),
                   minHeight: 4,
                 ),
@@ -1857,10 +1988,12 @@ class _VideoPreviewWidgetState extends State<_VideoPreviewWidget> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(File(widget.videoPath))
-      ..initialize().then((_) {
-        if (mounted) setState(() => _initialized = true);
-      });
+    _controller = VideoPlayerController.file(File(widget.videoPath));
+    _controller.initialize().then((_) {
+      if (mounted) setState(() => _initialized = true);
+    }).catchError((_) {
+      // fichier vidéo introuvable ou format non supporté
+    });
   }
 
   @override
@@ -1933,7 +2066,7 @@ class _StatusBadge extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha:0.1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(label,
@@ -1954,7 +2087,7 @@ class _Tag extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha:0.1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(label,
@@ -1994,7 +2127,7 @@ class _BoardTaskTile extends StatelessWidget {
         border: Border(left: BorderSide(color: priorityColor, width: 4)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -2027,11 +2160,15 @@ class _BoardTaskTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: priorityColor.withOpacity(0.12),
+                    color: priorityColor.withValues(alpha:0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    task.priority!,
+                    task.priority == 'high'
+                        ? 'Haute'
+                        : task.priority == 'medium'
+                            ? 'Moyenne'
+                            : 'Basse',
                     style: TextStyle(
                       color: priorityColor,
                       fontWeight: FontWeight.w600,
@@ -2043,7 +2180,7 @@ class _BoardTaskTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.14),
+                    color: Colors.grey.withValues(alpha:0.14),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(

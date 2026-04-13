@@ -8,7 +8,7 @@ class Task {
   Id id = Isar.autoIncrement;
   late String title;
   String? description;
-  String status = 'pending'; // pending, completed, archived
+  String status = 'pending'; // pending, in_progress, completed, archived
   String? priority; // low, medium, high
   String? deadline;
   String? audioPath;

@@ -25,11 +25,12 @@ class IsarService {
   }
 
   Future<void> updateTask(Task task) async {
-      final isar = await db;
-      await isar.writeTxn(() async {
-    await isar.tasks.put(task);
-  });
-}
+    final isar = await db;
+    print('[updateTask] id=${task.id}, title=${task.title}, status=${task.status}');
+    await isar.writeTxn(() async {
+      await isar.tasks.put(task);
+    });
+  }
 
   Future<List<Task>> getAllTasks() async {
     final isar = await db;

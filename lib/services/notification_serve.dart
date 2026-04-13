@@ -195,9 +195,10 @@ class NotificationService {
 
   String _statusLabel(String s) {
     switch (s) {
-      case 'completed': return 'Terminée ✅';
-      case 'archived':  return 'Archivée 📦';
-      default:          return 'À faire 📝';
+      case 'in_progress': return 'En cours 🔄';
+      case 'completed':   return 'Terminée ✅';
+      case 'archived':    return 'Archivée 📦';
+      default:            return 'À faire 📝';
     }
   }
 
