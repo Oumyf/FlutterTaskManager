@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>FLUTTER_SKILLS.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="montée-en-compétences-flutter--tasks-manager">Montée en compétences Flutter — Tasks Manager</h1>
+<blockquote>
+<p>Projet : application de gestion de tâches (style Trello)
+Stack : Flutter + Firebase + Isar + Material Design 3</p>
+</blockquote>
+<hr>
+<h2 id="ce-que-tu-as-appris-dans-ce-projet">Ce que tu as appris dans ce projet</h2>
+<h3 id="1-structure-dune-app-flutter">1. Structure d'une app Flutter</h3>
+<ul>
+<li><strong><code>main.dart</code></strong> : point d'entrée, initialisation Firebase, routing</li>
+<li><strong><code>MaterialApp</code></strong> + <code>ThemeData</code> : configuration du thème global</li>
+<li><strong><code>Scaffold</code></strong> : structure de base de chaque écran (AppBar + body + bottomNav)</li>
+<li><strong><code>NavigationBar</code></strong> + <code>NavigationDestination</code> : barre de navigation moderne (Material 3)</li>
+</ul>
+<pre class="hljs"><code><div><span class="hljs-comment">// Pattern classique : index de page + setState</span>
+<span class="hljs-built_in">int</span> _currentPage = <span class="hljs-number">0</span>;
+onDestinationSelected: (i) =&gt; setState(() =&gt; _currentPage = i),
+</div></code></pre>
+<hr>
+<h3 id="2-widgets-de-mise-en-page">2. Widgets de mise en page</h3>
+<table>
+<thead>
+<tr>
+<th>Widget</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Column</code> / <code>Row</code></td>
+<td>Disposition verticale / horizontale</td>
+</tr>
+<tr>
+<td><code>Stack</code></td>
+<td>Superposition de widgets</td>
+</tr>
+<tr>
+<td><code>Expanded</code></td>
+<td>Remplit l'espace disponible (obligatoire dans Row/Column)</td>
+</tr>
+<tr>
+<td><code>Flexible</code></td>
+<td>Comme Expanded mais peut rétrécir</td>
+</tr>
+<tr>
+<td><code>Padding</code> / <code>SizedBox</code></td>
+<td>Espacement</td>
+</tr>
+<tr>
+<td><code>SingleChildScrollView</code></td>
+<td>Rendre un contenu scrollable</td>
+</tr>
+<tr>
+<td><code>ListView.builder</code></td>
+<td>Liste performante avec items générés dynamiquement</td>
+</tr>
+<tr>
+<td><code>Wrap</code></td>
+<td>Aligne les enfants en revenant à la ligne si nécessaire</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Erreur classique</strong> : mettre un <code>ListView</code> dans un <code>Column</code> sans <code>Expanded</code> → RenderFlex overflow</p>
+</blockquote>
+<hr>
+<h3 id="3-formulaires-et-validation">3. Formulaires et validation</h3>
+<pre class="hljs"><code><div>Form(
+  key: _formKey,
+  autovalidateMode: _autoValidateMode,
+  child: Column(children: [
+    TextFormField(
+      controller: _titleController,
+      validator: (v) =&gt; (v?.trim().isEmpty ?? <span class="hljs-keyword">true</span>) ? <span class="hljs-string">&#x27;Requis&#x27;</span> : <span class="hljs-keyword">null</span>,
+    ),
+  ]),
+)
+
+<span class="hljs-comment">// Valider manuellement</span>
+<span class="hljs-keyword">final</span> isValid = _formKey.currentState?.validate() ?? <span class="hljs-keyword">false</span>;
+</div></code></pre>
+<ul>
+<li><strong><code>TextEditingController</code></strong> : lire/écrire le texte d'un champ</li>
+<li><strong><code>autovalidateMode</code></strong> : quand déclencher la validation (onUserInteraction, always, disabled)</li>
+<li><strong><code>DropdownButtonFormField</code></strong> : toujours ajouter <code>isExpanded: true</code> pour éviter l'overflow</li>
+</ul>
+<hr>
+<h3 id="4-navigation-entre-pages">4. Navigation entre pages</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Pousser une nouvelle page</span>
+Navigator.push(context, MaterialPageRoute(builder: (_) =&gt; DetailPage()));
+
+<span class="hljs-comment">// Revenir</span>
+Navigator.pop(context);
+
+<span class="hljs-comment">// Remplacer la page courante</span>
+Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) =&gt; LoginPage()));
+</div></code></pre>
+<ul>
+<li><strong><code>StreamBuilder&lt;User?&gt;</code></strong> : écoute en temps réel l'état Firebase Auth → redirige automatiquement</li>
+</ul>
+<hr>
+<h3 id="5-état-local-avec-setstate">5. État local avec setState</h3>
+<pre class="hljs"><code><div><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">_MyPageState</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">State</span>&lt;<span class="hljs-title">MyPage</span>&gt; </span>{
+  <span class="hljs-built_in">int</span> count = <span class="hljs-number">0</span>;
+
+  <span class="hljs-keyword">void</span> increment() {
+    setState(() =&gt; count++); <span class="hljs-comment">// rebuild du widget</span>
+  }
+}
+</div></code></pre>
+<blockquote>
+<p><code>setState</code> ne rebuild que le widget et ses enfants — pas toute l'app.</p>
+</blockquote>
+<hr>
+<h3 id="6-gestion-asynchrone-asyncawait">6. Gestion asynchrone (async/await)</h3>
+<pre class="hljs"><code><div>Future&lt;<span class="hljs-keyword">void</span>&gt; loadData() <span class="hljs-keyword">async</span> {
+  <span class="hljs-keyword">final</span> result = <span class="hljs-keyword">await</span> isarService.getAllTasks();
+  setState(() =&gt; tasks = result);
+}
+</div></code></pre>
+<ul>
+<li><strong><code>Future</code></strong> : opération qui complètera dans le futur</li>
+<li><strong><code>async/await</code></strong> : syntaxe pour attendre un Future sans bloquer l'UI</li>
+<li><strong><code>mounted</code></strong> : toujours vérifier avant d'appeler setState après un await</li>
+</ul>
+<pre class="hljs"><code><div><span class="hljs-keyword">if</span> (mounted) setState(() =&gt; _loading = <span class="hljs-keyword">false</span>);
+</div></code></pre>
+<hr>
+<h3 id="7-base-de-données-locale--isar">7. Base de données locale — Isar</h3>
+<pre class="hljs"><code><div><span class="hljs-meta">@collection</span>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Task</span> </span>{
+  Id id = Isar.autoIncrement;
+  <span class="hljs-keyword">late</span> <span class="hljs-built_in">String</span> title;
+  <span class="hljs-built_in">String?</span> description; <span class="hljs-comment">// nullable = optionnel</span>
+}
+</div></code></pre>
+<ul>
+<li><strong><code>@collection</code></strong> : marque la classe comme une table Isar</li>
+<li><strong><code>Id</code></strong> : clé primaire auto-incrémentée</li>
+<li><strong><code>build_runner</code></strong> : génère le fichier <code>.g.dart</code> (schéma Isar)</li>
+<li><strong>Opérations CRUD</strong> :<pre class="hljs"><code><div><span class="hljs-keyword">await</span> isar.writeTxn(() =&gt; isar.tasks.put(task));   <span class="hljs-comment">// create/update</span>
+<span class="hljs-keyword">await</span> isar.tasks.where().findAll();                 <span class="hljs-comment">// read</span>
+<span class="hljs-keyword">await</span> isar.writeTxn(() =&gt; isar.tasks.delete(id));  <span class="hljs-comment">// delete</span>
+</div></code></pre>
+</li>
+</ul>
+<blockquote>
+<p><strong>Important</strong> : changer le schéma (ajouter un champ) nécessite de relancer <code>build_runner</code></p>
+</blockquote>
+<hr>
+<h3 id="8-firebase-auth">8. Firebase Auth</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Connexion email/password</span>
+<span class="hljs-keyword">await</span> FirebaseAuth.instance.signInWithEmailAndPassword(
+  email: email, password: password);
+
+<span class="hljs-comment">// Écouter l&#x27;état de connexion</span>
+stream: FirebaseAuth.instance.authStateChanges()
+<span class="hljs-comment">// → null si déconnecté, User si connecté</span>
+</div></code></pre>
+<ul>
+<li><strong>Google Sign-In</strong> : nécessite SHA-1 dans Firebase Console pour Android</li>
+<li><strong><code>StreamBuilder&lt;User?&gt;</code></strong> : widget qui se rebuild à chaque changement d'état auth</li>
+</ul>
+<hr>
+<h3 id="9-drag--drop-kanban">9. Drag &amp; Drop (Kanban)</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Widget draggable</span>
+LongPressDraggable&lt;Task&gt;(
+  data: task,           <span class="hljs-comment">// données transportées</span>
+  feedback: CardWidget(), <span class="hljs-comment">// widget affiché pendant le drag</span>
+  child: CardWidget(),
+)
+
+<span class="hljs-comment">// Zone de dépôt</span>
+DragTarget&lt;Task&gt;(
+  onWillAcceptWithDetails: (_) =&gt; <span class="hljs-keyword">true</span>,
+  onAcceptWithDetails: (details) =&gt; moveTask(details.data),
+  builder: (context, candidateData, _) { ... }
+)
+</div></code></pre>
+<blockquote>
+<p><strong>Piège</strong> : utiliser <code>SingleChildScrollView</code> horizontal plutôt que <code>ListView</code> pour ne pas capturer les gestes de drag.</p>
+</blockquote>
+<hr>
+<h3 id="10-animations">10. Animations</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Animation simple sur changement de valeur</span>
+AnimatedContainer(
+  duration: <span class="hljs-built_in">Duration</span>(milliseconds: <span class="hljs-number">200</span>),
+  color: isSelected ? Colors.blue : Colors.grey,
+)
+
+<span class="hljs-comment">// AnimationController pour animations en boucle</span>
+<span class="hljs-keyword">late</span> AnimationController _controller;
+_controller = AnimationController(vsync: <span class="hljs-keyword">this</span>, duration: <span class="hljs-built_in">Duration</span>(ms: <span class="hljs-number">800</span>))
+  ..repeat(reverse: <span class="hljs-keyword">true</span>);
+</div></code></pre>
+<ul>
+<li><strong><code>SingleTickerProviderStateMixin</code></strong> : requis pour <code>AnimationController</code></li>
+<li><strong><code>AnimatedSwitcher</code></strong> : transition automatique entre 2 widgets</li>
+<li><strong><code>AnimatedBuilder</code></strong> : rebuild uniquement la partie animée</li>
+</ul>
+<hr>
+<h3 id="11-médias">11. Médias</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Choisir une image</span>
+<span class="hljs-keyword">final</span> f = <span class="hljs-keyword">await</span> ImagePicker().pickImage(source: ImageSource.gallery);
+
+<span class="hljs-comment">// Afficher une image locale</span>
+Image.file(File(path), height: <span class="hljs-number">100</span>, fit: BoxFit.cover)
+
+<span class="hljs-comment">// Enregistrer audio</span>
+<span class="hljs-keyword">await</span> recorder.start(path: path, encoder: AudioEncoder.wav);
+<span class="hljs-keyword">await</span> recorder.stop();
+
+<span class="hljs-comment">// Lire audio</span>
+<span class="hljs-keyword">final</span> player = AudioPlayer();
+<span class="hljs-keyword">await</span> player.setFilePath(path);
+<span class="hljs-keyword">await</span> player.play();
+</div></code></pre>
+<hr>
+<h3 id="12-sharedpreferences-persistance-légère">12. SharedPreferences (persistance légère)</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Sauvegarder</span>
+<span class="hljs-keyword">final</span> prefs = <span class="hljs-keyword">await</span> SharedPreferences.getInstance();
+<span class="hljs-keyword">await</span> prefs.setString(<span class="hljs-string">&#x27;key&#x27;</span>, value);
+
+<span class="hljs-comment">// Lire</span>
+<span class="hljs-keyword">final</span> value = prefs.getString(<span class="hljs-string">&#x27;key&#x27;</span>) ?? <span class="hljs-string">&#x27;&#x27;</span>;
+</div></code></pre>
+<blockquote>
+<p>Utiliser pour : URL serveur, image de fond, préférences utilisateur.</p>
+</blockquote>
+<hr>
+<h3 id="13-notifications-locales">13. Notifications locales</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Afficher une notification immédiate</span>
+<span class="hljs-keyword">await</span> flutterLocalNotifications.<span class="hljs-keyword">show</span>(id, title, body, details);
+
+<span class="hljs-comment">// Notification programmée (timezone)</span>
+<span class="hljs-keyword">await</span> flutterLocalNotifications.zonedSchedule(
+  id, title, body,
+  tz.TZDateTime.from(scheduledDate, tz.local),
+  details,
+);
+</div></code></pre>
+<hr>
+<h3 id="14-http--api-rest">14. HTTP / API REST</h3>
+<pre class="hljs"><code><div><span class="hljs-comment">// Requête multipart (envoyer un fichier)</span>
+<span class="hljs-keyword">final</span> request = http.MultipartRequest(<span class="hljs-string">&#x27;POST&#x27;</span>, <span class="hljs-built_in">Uri</span>.parse(url))
+  ..files.add(<span class="hljs-keyword">await</span> http.MultipartFile.fromPath(<span class="hljs-string">&#x27;file&#x27;</span>, audioPath));
+<span class="hljs-keyword">final</span> response = <span class="hljs-keyword">await</span> request.send();
+<span class="hljs-keyword">final</span> body = <span class="hljs-keyword">await</span> response.stream.bytesToString();
+</div></code></pre>
+<hr>
+<h2 id="concepts-flutter-importants-à-retenir">Concepts Flutter importants à retenir</h2>
+<h3 id="const-vs-final-vs-var"><code>const</code> vs <code>final</code> vs <code>var</code></h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">const</span> text = <span class="hljs-string">&#x27;Fixe à la compilation&#x27;</span>;  <span class="hljs-comment">// valeur connue avant l&#x27;exécution</span>
+<span class="hljs-keyword">final</span> name = fetchName();               <span class="hljs-comment">// assigné une seule fois, au runtime</span>
+<span class="hljs-keyword">var</span> count = <span class="hljs-number">0</span>;                          <span class="hljs-comment">// peut changer</span>
+</div></code></pre>
+<h3 id="nullable-vs-non-nullable">Nullable vs Non-nullable</h3>
+<pre class="hljs"><code><div><span class="hljs-built_in">String</span>  title;   <span class="hljs-comment">// ne peut jamais être null</span>
+<span class="hljs-built_in">String?</span> subtitle; <span class="hljs-comment">// peut être null → toujours vérifier avant d&#x27;utiliser</span>
+subtitle?.length  <span class="hljs-comment">// safe call — retourne null si subtitle est null</span>
+subtitle ?? <span class="hljs-string">&#x27;&#x27;</span>    <span class="hljs-comment">// valeur par défaut si null</span>
+</div></code></pre>
+<h3 id="statelesswidget-vs-statefulwidget"><code>StatelessWidget</code> vs <code>StatefulWidget</code></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>StatelessWidget</th>
+<th>StatefulWidget</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>État interne</td>
+<td>Non</td>
+<td>Oui</td>
+</tr>
+<tr>
+<td><code>setState</code></td>
+<td>Non</td>
+<td>Oui</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Meilleure</td>
+<td>Légèrement plus lourde</td>
+</tr>
+<tr>
+<td>Utiliser quand</td>
+<td>Affichage statique</td>
+<td>Formulaire, animation, données changeantes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="le-cycle-de-vie-dun-statefulwidget">Le cycle de vie d'un StatefulWidget</h3>
+<pre class="hljs"><code><div><span class="hljs-meta">@override</span>
+<span class="hljs-keyword">void</span> initState() {
+  <span class="hljs-keyword">super</span>.initState();
+  <span class="hljs-comment">// appelé une seule fois à la création</span>
+}
+
+<span class="hljs-meta">@override</span>
+<span class="hljs-keyword">void</span> dispose() {
+  controller.dispose(); <span class="hljs-comment">// toujours libérer les ressources</span>
+  <span class="hljs-keyword">super</span>.dispose();
+}
+</div></code></pre>
+<hr>
+<h2 id="erreurs-fréquentes-et-solutions">Erreurs fréquentes et solutions</h2>
+<table>
+<thead>
+<tr>
+<th>Erreur</th>
+<th>Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RenderFlex overflowed</code></td>
+<td>Pas assez de place dans Row/Column</td>
+<td>Entourer l'enfant avec <code>Expanded</code></td>
+</tr>
+<tr>
+<td><code>setState after dispose</code></td>
+<td>Async complète après fermeture du widget</td>
+<td>Vérifier <code>if (mounted)</code></td>
+</tr>
+<tr>
+<td><code>Null check on null</code></td>
+<td>Accès à un champ nullable sans vérification</td>
+<td>Utiliser <code>?.</code> ou <code>??</code></td>
+</tr>
+<tr>
+<td><code>IsarError: Collection id invalid</code></td>
+<td>Schéma modifié sans relancer build_runner</td>
+<td><code>dart run build_runner build --delete-conflicting-outputs</code></td>
+</tr>
+<tr>
+<td><code>Instance already opened</code></td>
+<td>Isar ouvert deux fois</td>
+<td>Vérifier <code>Isar.instanceNames.isNotEmpty</code> avant d'ouvrir</td>
+</tr>
+<tr>
+<td><code>Google Sign-In error 10</code></td>
+<td>SHA-1 non enregistré dans Firebase</td>
+<td>Ajouter le SHA-1 dans Firebase Console</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="prochaines-étapes-recommandées">Prochaines étapes recommandées</h2>
+<ol>
+<li><strong>Provider / Riverpod</strong> : gestion d'état globale (remplacer <code>setState</code> par quelque chose de plus scalable)</li>
+<li><strong>Firestore</strong> : base de données cloud pour synchroniser entre utilisateurs (pour les assignations)</li>
+<li><strong>GoRouter</strong> : navigation avancée avec URL et deep linking</li>
+<li><strong>Tests unitaires</strong> : <code>flutter_test</code>, tester les services et la logique métier</li>
+<li><strong>CI/CD</strong> : GitHub Actions pour build automatique + deploy sur Play Store</li>
+<li><strong>Internationalisation (i18n)</strong> : <code>flutter_localizations</code> pour supporter plusieurs langues</li>
+</ol>
+<hr>
+<h2 id="ressources">Ressources</h2>
+<ul>
+<li>Documentation Flutter : https://docs.flutter.dev</li>
+<li>Pub.dev (packages) : https://pub.dev</li>
+<li>Firebase Flutter : https://firebase.google.com/docs/flutter/setup</li>
+<li>Material Design 3 : https://m3.material.io</li>
+<li>Isar Database : https://isar.dev</li>
+</ul>
+
+</body>
+</html>

@@ -150,6 +150,48 @@ class NotificationService {
     }
   }
 
+  // ── Notification programmée par l'utilisateur ────────────────────────────
+
+  Future<void> scheduleTaskNotification({
+    required int taskId,
+    required String taskTitle,
+    required DateTime scheduledDate,
+  }) async {
+    try {
+      if (scheduledDate.isBefore(DateTime.now())) return;
+
+      final scheduled = tz.TZDateTime.from(scheduledDate, tz.local);
+      await _plugin.zonedSchedule(
+        taskId.abs() % 100000 + 2000, // ID unique basé sur l'id de la tâche
+        '🔔 Rappel de tâche',
+        taskTitle,
+        scheduled,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channel.id,
+            _channel.name,
+            channelDescription: _channel.description,
+            importance: Importance.max,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (_) {}
+  }
+
+  Future<void> cancelScheduledNotification(int taskId) async {
+    await _plugin.cancel(taskId.abs() % 100000 + 2000);
+  }
+
   // ── Annuler un rappel programmé ──────────────────────────────────────────
 
   Future<void> cancelDeadlineReminder(String deadline) async {

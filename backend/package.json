@@ -1,0 +1,44 @@
+{
+  "name": "backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Strapi application",
+  "scripts": {
+    "build": "strapi build",
+    "console": "strapi console",
+    "deploy": "strapi deploy",
+    "dev": "strapi develop",
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "strapi": "strapi",
+    "upgrade": "npx @strapi/upgrade latest",
+    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1037.0",
+    "@aws-sdk/s3-request-presigner": "^3.1037.0",
+    "@strapi/plugin-cloud": "5.43.0",
+    "@strapi/plugin-users-permissions": "5.43.0",
+    "@strapi/strapi": "5.43.0",
+    "better-sqlite3": "12.8.0",
+    "firebase-admin": "^13.8.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.0.0 <=24.x.x",
+    "npm": ">=6.0.0"
+  },
+  "strapi": {
+    "uuid": "e80e979a-350b-4478-b456-794d584b1a51",
+    "installId": "a46d18d7a6977c06dfd3a49ea90ae9a4d33045bf525082c7b25b086f613c3984"
+  }
+}

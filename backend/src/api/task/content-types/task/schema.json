@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tasks",
+  "info": {
+    "singularName": "task",
+    "pluralName": "tasks",
+    "displayName": "Task",
+    "description": "Tâches de l'application Flutter"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "in_progress", "completed", "archived"],
+      "default": "pending",
+      "required": true
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": ["low", "medium", "high"]
+    },
+    "deadline": {
+      "type": "string"
+    },
+    "audioPath": {
+      "type": "string"
+    },
+    "imagePath": {
+      "type": "string"
+    },
+    "videoPath": {
+      "type": "string"
+    },
+    "labelsJson": {
+      "type": "text"
+    },
+    "checklistJson": {
+      "type": "text"
+    },
+    "attachmentsJson": {
+      "type": "text"
+    },
+    "scheduledNotification": {
+      "type": "string"
+    },
+    "fcmToken": {
+      "type": "string"
+    },
+    "createdByEmail": {
+      "type": "string"
+    },
+    "createdByName": {
+      "type": "string"
+    },
+    "assignedTo": {
+      "type": "string"
+    }
+  }
+}

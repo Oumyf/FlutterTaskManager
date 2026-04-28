@@ -1,12 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:task_media_app/pages/login_page.dart';
 import 'package:task_media_app/pages/task_list_page.dart';
+import 'package:task_media_app/services/api_service.dart';
+import 'package:task_media_app/services/auth_service.dart';
 import 'package:task_media_app/services/notification_serve.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Handler background — doit être TOP-LEVEL (pas dans une classe)
-//    et déclaré AVANT tout le reste
+// Handler background FCM — doit être top-level
 // ─────────────────────────────────────────────────────────────────────────────
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -14,31 +17,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('📩 Background message: ${message.messageId}');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. main() — tout l'init ici, jamais dans build()
-// ─────────────────────────────────────────────────────────────────────────────
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Firebase init
   await Firebase.initializeApp();
-
-  // Background handler — doit être enregistré juste après initializeApp
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // Initialiser NotificationService (local + FCM)
   await NotificationService.instance.init();
   await NotificationService.instance.requestPermission();
-
-  // Afficher le token FCM pour les tests
-  final token = await FirebaseMessaging.instance.getToken();
-  debugPrint('✅ FCM Token: $token');
 
   runApp(const MyApp());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// App widget
+// App root
 // ─────────────────────────────────────────────────────────────────────────────
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -52,60 +42,90 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6366F1)),
         useMaterial3: true,
       ),
-      // NavigatorKey nécessaire pour afficher des dialogs depuis des callbacks
       navigatorKey: NotificationService.navigatorKey,
-      home: const _AppInit(),
+      home: const _AuthGate(),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Widget qui écoute les messages — STATEFUL pour gérer le lifecycle
-// Les listeners sont dans initState/dispose, jamais dans build()
+// AuthGate — redirige automatiquement selon l'état Firebase Auth
 // ─────────────────────────────────────────────────────────────────────────────
-class _AppInit extends StatefulWidget {
-  const _AppInit();
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
 
   @override
-  State<_AppInit> createState() => _AppInitState();
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: AuthService.instance.authStateChanges,
+      builder: (context, snapshot) {
+        // En attente de la réponse Firebase
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // Connecté → page des tâches
+        if (snapshot.hasData && snapshot.data != null) {
+          return const _AppShell();
+        }
+
+        // Non connecté → page de login
+        return const LoginPage();
+      },
+    );
+  }
 }
 
-class _AppInitState extends State<_AppInit> {
+// ─────────────────────────────────────────────────────────────────────────────
+// AppShell — écoute FCM une fois connecté
+// ─────────────────────────────────────────────────────────────────────────────
+class _AppShell extends StatefulWidget {
+  const _AppShell();
+
+  @override
+  State<_AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<_AppShell> {
   @override
   void initState() {
     super.initState();
-    _setupForegroundListener();
-    _setupOnOpenedListener();
+    _setupFCM();
   }
 
-  // Notification reçue quand l'app est OUVERTE (foreground)
-  void _setupForegroundListener() {
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('📱 Foreground message: ${message.notification?.title}');
+  void _setupFCM() async {
+    // Récupère le token FCM et le stocke dans ApiService
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) _storeFcmToken(token);
+      FirebaseMessaging.instance.onTokenRefresh.listen(_storeFcmToken);
+    } catch (e) {
+      debugPrint('[FCM] Erreur token: $e');
+    }
 
+    // Notification reçue quand l'app est au premier plan
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final notification = message.notification;
       if (notification == null) return;
-
-      // Affiche la notif via NotificationService (centralisé)
       NotificationService.instance.showFCMNotification(
         notification.title ?? '',
         notification.body ?? '',
       );
     });
-  }
 
-  // App ouverte depuis une notification (background → foreground)
-  void _setupOnOpenedListener() {
+    // App ouverte depuis une notification
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('🚀 Opened from notification: ${message.notification?.title}');
-      // TODO: naviguer vers la bonne page selon message.data
+      debugPrint('Opened from notification: ${message.notification?.title}');
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return const TaskListPage();
+  void _storeFcmToken(String token) {
+    debugPrint('[FCM] Token enregistré');
+    ApiService.instance.fcmToken = token;
   }
-}
 
-// (La classe NotificationService pour la navigation/dialog a été supprimée. Utilise le singleton de notification_serve.dart)
+  @override
+  Widget build(BuildContext context) => const TaskListPage();
+}

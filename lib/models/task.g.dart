@@ -17,49 +17,74 @@ const TaskSchema = CollectionSchema(
   name: r'Task',
   id: 2998003626758701373,
   properties: {
-    r'audioPath': PropertySchema(
+    r'attachmentsJson': PropertySchema(
       id: 0,
+      name: r'attachmentsJson',
+      type: IsarType.string,
+    ),
+    r'audioPath': PropertySchema(
+      id: 1,
       name: r'audioPath',
       type: IsarType.string,
     ),
+    r'checklistJson': PropertySchema(
+      id: 2,
+      name: r'checklistJson',
+      type: IsarType.string,
+    ),
     r'createdAt': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'deadline': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'deadline',
       type: IsarType.string,
     ),
     r'description': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'description',
       type: IsarType.string,
     ),
     r'imagePath': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'imagePath',
       type: IsarType.string,
     ),
+    r'labelsJson': PropertySchema(
+      id: 7,
+      name: r'labelsJson',
+      type: IsarType.string,
+    ),
     r'priority': PropertySchema(
-      id: 5,
+      id: 8,
       name: r'priority',
       type: IsarType.string,
     ),
+    r'scheduledNotification': PropertySchema(
+      id: 9,
+      name: r'scheduledNotification',
+      type: IsarType.string,
+    ),
     r'status': PropertySchema(
-      id: 6,
+      id: 10,
       name: r'status',
       type: IsarType.string,
     ),
     r'title': PropertySchema(
-      id: 7,
+      id: 11,
       name: r'title',
       type: IsarType.string,
     ),
     r'videoPath': PropertySchema(
-      id: 8,
+      id: 12,
       name: r'videoPath',
+      type: IsarType.string,
+    ),
+    r'assignedTo': PropertySchema(
+      id: 13,
+      name: r'assignedTo',
       type: IsarType.string,
     )
   },
@@ -84,7 +109,19 @@ int _taskEstimateSize(
 ) {
   var bytesCount = offsets.last;
   {
+    final value = object.attachmentsJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.audioPath;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.checklistJson;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -108,7 +145,19 @@ int _taskEstimateSize(
     }
   }
   {
+    final value = object.labelsJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.priority;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.scheduledNotification;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -117,6 +166,12 @@ int _taskEstimateSize(
   bytesCount += 3 + object.title.length * 3;
   {
     final value = object.videoPath;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.assignedTo;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -130,15 +185,20 @@ void _taskSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.audioPath);
-  writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeString(offsets[2], object.deadline);
-  writer.writeString(offsets[3], object.description);
-  writer.writeString(offsets[4], object.imagePath);
-  writer.writeString(offsets[5], object.priority);
-  writer.writeString(offsets[6], object.status);
-  writer.writeString(offsets[7], object.title);
-  writer.writeString(offsets[8], object.videoPath);
+  writer.writeString(offsets[0], object.attachmentsJson);
+  writer.writeString(offsets[1], object.audioPath);
+  writer.writeString(offsets[2], object.checklistJson);
+  writer.writeDateTime(offsets[3], object.createdAt);
+  writer.writeString(offsets[4], object.deadline);
+  writer.writeString(offsets[5], object.description);
+  writer.writeString(offsets[6], object.imagePath);
+  writer.writeString(offsets[7], object.labelsJson);
+  writer.writeString(offsets[8], object.priority);
+  writer.writeString(offsets[9], object.scheduledNotification);
+  writer.writeString(offsets[10], object.status);
+  writer.writeString(offsets[11], object.title);
+  writer.writeString(offsets[12], object.videoPath);
+  writer.writeString(offsets[13], object.assignedTo);
 }
 
 Task _taskDeserialize(
@@ -148,16 +208,21 @@ Task _taskDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Task();
-  object.audioPath = reader.readStringOrNull(offsets[0]);
-  object.createdAt = reader.readDateTime(offsets[1]);
-  object.deadline = reader.readStringOrNull(offsets[2]);
-  object.description = reader.readStringOrNull(offsets[3]);
+  object.attachmentsJson = reader.readStringOrNull(offsets[0]);
+  object.audioPath = reader.readStringOrNull(offsets[1]);
+  object.checklistJson = reader.readStringOrNull(offsets[2]);
+  object.createdAt = reader.readDateTime(offsets[3]);
+  object.deadline = reader.readStringOrNull(offsets[4]);
+  object.description = reader.readStringOrNull(offsets[5]);
   object.id = id;
-  object.imagePath = reader.readStringOrNull(offsets[4]);
-  object.priority = reader.readStringOrNull(offsets[5]);
-  object.status = reader.readString(offsets[6]);
-  object.title = reader.readString(offsets[7]);
-  object.videoPath = reader.readStringOrNull(offsets[8]);
+  object.imagePath = reader.readStringOrNull(offsets[6]);
+  object.labelsJson = reader.readStringOrNull(offsets[7]);
+  object.priority = reader.readStringOrNull(offsets[8]);
+  object.scheduledNotification = reader.readStringOrNull(offsets[9]);
+  object.status = reader.readString(offsets[10]);
+  object.title = reader.readString(offsets[11]);
+  object.videoPath = reader.readStringOrNull(offsets[12]);
+  object.assignedTo = reader.readStringOrNull(offsets[13]);
   return object;
 }
 
@@ -171,20 +236,30 @@ P _taskDeserializeProp<P>(
     case 0:
       return (reader.readStringOrNull(offset)) as P;
     case 1:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 2:
       return (reader.readStringOrNull(offset)) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 4:
       return (reader.readStringOrNull(offset)) as P;
     case 5:
       return (reader.readStringOrNull(offset)) as P;
     case 6:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 8:
+      return (reader.readStringOrNull(offset)) as P;
+    case 9:
+      return (reader.readStringOrNull(offset)) as P;
+    case 10:
+      return (reader.readString(offset)) as P;
+    case 11:
+      return (reader.readString(offset)) as P;
+    case 12:
+      return (reader.readStringOrNull(offset)) as P;
+    case 13:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -279,6 +354,152 @@ extension TaskQueryWhere on QueryBuilder<Task, Task, QWhereClause> {
 }
 
 extension TaskQueryFilter on QueryBuilder<Task, Task, QFilterCondition> {
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'attachmentsJson',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'attachmentsJson',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'attachmentsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'attachmentsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'attachmentsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'attachmentsJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'attachmentsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'attachmentsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'attachmentsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'attachmentsJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'attachmentsJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> attachmentsJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'attachmentsJson',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterFilterCondition> audioPathIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -420,6 +641,152 @@ extension TaskQueryFilter on QueryBuilder<Task, Task, QFilterCondition> {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'audioPath',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'checklistJson',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'checklistJson',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'checklistJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'checklistJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'checklistJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'checklistJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'checklistJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'checklistJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'checklistJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'checklistJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'checklistJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> checklistJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'checklistJson',
         value: '',
       ));
     });
@@ -967,6 +1334,152 @@ extension TaskQueryFilter on QueryBuilder<Task, Task, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'labelsJson',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'labelsJson',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'labelsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'labelsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'labelsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'labelsJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'labelsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'labelsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'labelsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'labelsJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'labelsJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> labelsJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'labelsJson',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterFilterCondition> priorityIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1107,6 +1620,158 @@ extension TaskQueryFilter on QueryBuilder<Task, Task, QFilterCondition> {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'priority',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition>
+      scheduledNotificationIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'scheduledNotification',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition>
+      scheduledNotificationIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'scheduledNotification',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> scheduledNotificationEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'scheduledNotification',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition>
+      scheduledNotificationGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'scheduledNotification',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> scheduledNotificationLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'scheduledNotification',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> scheduledNotificationBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'scheduledNotification',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition>
+      scheduledNotificationStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'scheduledNotification',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> scheduledNotificationEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'scheduledNotification',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> scheduledNotificationContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'scheduledNotification',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition> scheduledNotificationMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'scheduledNotification',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition>
+      scheduledNotificationIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'scheduledNotification',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterFilterCondition>
+      scheduledNotificationIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'scheduledNotification',
         value: '',
       ));
     });
@@ -1520,6 +2185,18 @@ extension TaskQueryObject on QueryBuilder<Task, Task, QFilterCondition> {}
 extension TaskQueryLinks on QueryBuilder<Task, Task, QFilterCondition> {}
 
 extension TaskQuerySortBy on QueryBuilder<Task, Task, QSortBy> {
+  QueryBuilder<Task, Task, QAfterSortBy> sortByAttachmentsJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'attachmentsJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> sortByAttachmentsJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'attachmentsJson', Sort.desc);
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterSortBy> sortByAudioPath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioPath', Sort.asc);
@@ -1529,6 +2206,18 @@ extension TaskQuerySortBy on QueryBuilder<Task, Task, QSortBy> {
   QueryBuilder<Task, Task, QAfterSortBy> sortByAudioPathDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioPath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> sortByChecklistJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> sortByChecklistJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistJson', Sort.desc);
     });
   }
 
@@ -1580,6 +2269,18 @@ extension TaskQuerySortBy on QueryBuilder<Task, Task, QSortBy> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterSortBy> sortByLabelsJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'labelsJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> sortByLabelsJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'labelsJson', Sort.desc);
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterSortBy> sortByPriority() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'priority', Sort.asc);
@@ -1589,6 +2290,18 @@ extension TaskQuerySortBy on QueryBuilder<Task, Task, QSortBy> {
   QueryBuilder<Task, Task, QAfterSortBy> sortByPriorityDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'priority', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> sortByScheduledNotification() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'scheduledNotification', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> sortByScheduledNotificationDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'scheduledNotification', Sort.desc);
     });
   }
 
@@ -1630,6 +2343,18 @@ extension TaskQuerySortBy on QueryBuilder<Task, Task, QSortBy> {
 }
 
 extension TaskQuerySortThenBy on QueryBuilder<Task, Task, QSortThenBy> {
+  QueryBuilder<Task, Task, QAfterSortBy> thenByAttachmentsJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'attachmentsJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> thenByAttachmentsJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'attachmentsJson', Sort.desc);
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterSortBy> thenByAudioPath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioPath', Sort.asc);
@@ -1639,6 +2364,18 @@ extension TaskQuerySortThenBy on QueryBuilder<Task, Task, QSortThenBy> {
   QueryBuilder<Task, Task, QAfterSortBy> thenByAudioPathDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'audioPath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> thenByChecklistJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> thenByChecklistJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'checklistJson', Sort.desc);
     });
   }
 
@@ -1702,6 +2439,18 @@ extension TaskQuerySortThenBy on QueryBuilder<Task, Task, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Task, Task, QAfterSortBy> thenByLabelsJson() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'labelsJson', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> thenByLabelsJsonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'labelsJson', Sort.desc);
+    });
+  }
+
   QueryBuilder<Task, Task, QAfterSortBy> thenByPriority() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'priority', Sort.asc);
@@ -1711,6 +2460,18 @@ extension TaskQuerySortThenBy on QueryBuilder<Task, Task, QSortThenBy> {
   QueryBuilder<Task, Task, QAfterSortBy> thenByPriorityDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'priority', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> thenByScheduledNotification() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'scheduledNotification', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Task, Task, QAfterSortBy> thenByScheduledNotificationDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'scheduledNotification', Sort.desc);
     });
   }
 
@@ -1752,10 +2513,26 @@ extension TaskQuerySortThenBy on QueryBuilder<Task, Task, QSortThenBy> {
 }
 
 extension TaskQueryWhereDistinct on QueryBuilder<Task, Task, QDistinct> {
+  QueryBuilder<Task, Task, QDistinct> distinctByAttachmentsJson(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'attachmentsJson',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Task, Task, QDistinct> distinctByAudioPath(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'audioPath', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Task, Task, QDistinct> distinctByChecklistJson(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'checklistJson',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -1786,10 +2563,25 @@ extension TaskQueryWhereDistinct on QueryBuilder<Task, Task, QDistinct> {
     });
   }
 
+  QueryBuilder<Task, Task, QDistinct> distinctByLabelsJson(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'labelsJson', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Task, Task, QDistinct> distinctByPriority(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'priority', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Task, Task, QDistinct> distinctByScheduledNotification(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'scheduledNotification',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -1822,9 +2614,21 @@ extension TaskQueryProperty on QueryBuilder<Task, Task, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Task, String?, QQueryOperations> attachmentsJsonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'attachmentsJson');
+    });
+  }
+
   QueryBuilder<Task, String?, QQueryOperations> audioPathProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'audioPath');
+    });
+  }
+
+  QueryBuilder<Task, String?, QQueryOperations> checklistJsonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'checklistJson');
     });
   }
 
@@ -1852,9 +2656,22 @@ extension TaskQueryProperty on QueryBuilder<Task, Task, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Task, String?, QQueryOperations> labelsJsonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'labelsJson');
+    });
+  }
+
   QueryBuilder<Task, String?, QQueryOperations> priorityProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'priority');
+    });
+  }
+
+  QueryBuilder<Task, String?, QQueryOperations>
+      scheduledNotificationProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'scheduledNotification');
     });
   }
 
